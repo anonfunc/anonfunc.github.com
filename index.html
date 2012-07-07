@@ -9,7 +9,8 @@
   <meta name="author" content="Dwight Holman">
 
   
-  <meta name="description" content=" Blog Archives Recent Posts ">
+  <meta name="description" content="One (of the many) nice thing(s) in git is the ability to stash local
+changes to deal with either upstream changes or another issue. SVN doesn&#8217;t &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +66,180 @@
       <div class="blog-index">
   
   
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/07/01/using-quilt-to-stash-a-changelist-in-svn/">Using Quilt to Stash a Changelist in SVN</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-01T14:29:00-07:00" pubdate data-updated="true">Jul 1<span>st</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>One (of the many) nice thing(s) in git is the ability to stash local
+changes to deal with either upstream changes or another issue.  SVN doesn&#8217;t have this.
+Some IDEs, such as IDEA IntelliJ, have &#8220;shelving&#8221; which mimics stash, but it is always nice to have an alternative which
+works at the command line.</p>
+
+<p>Enter Quilt.  <a href="https://en.wikipedia.org/wiki/Quilt_(software)" title="Quilt">Quilt</a> is a patch management tool which gives basic operations around maintaining a stack of patches in an automatic way.  Combined with SVN changelists, you can manage several separate issues at the same time.</p>
+
+<p>Starting with a working directory with one modified file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>svn status
+</span><span class='line'>M    README
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We add it to a named changelist:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>svn cl readme-update README
+</span><span class='line'><span class="nv">$ </span>svn status
+</span><span class='line'>--- Changelist <span class="err">&#39;</span>readme-update<span class="sb">`</span>:
+</span><span class='line'>M    README
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We generate a diff for the changelist, and import it into quilt.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>svn diff --cl readme-update &gt; readme-update.diff
+</span><span class='line'><span class="nv">$ </span>quilt import -p0 readme-update.diff
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now that the changes are managed by quilt, we don&#8217;t need them in the working directory any more:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>svn revert -R . --cl readme-update
+</span><span class='line'>Reverted <span class="s1">&#39;README&#39;</span>
+</span><span class='line'><span class="nv">$ </span>svn status
+</span><span class='line'>--- Changelist <span class="err">&#39;</span>readme-update<span class="sb">`</span>:
+</span><span class='line'>     README
+</span><span class='line'><span class="nv">$ </span>quilt series
+</span><span class='line'>patches/readme-update.diff
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&#8217;d like the changes back now:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>quilt push
+</span><span class='line'>Applying patch patches/readme-update.diff
+</span><span class='line'>patching file README
+</span><span class='line'>
+</span><span class='line'>Now at patch patches/readme-update.diff
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The changes are back, but we should group them with a changelist again:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>quilt files | xargs svn cl <span class="sb">`</span>quilt top<span class="sb">`</span>
+</span><span class='line'>D <span class="o">[</span>readme-update<span class="o">]</span> README
+</span><span class='line'>A <span class="o">[</span>patches/readme-update.diff<span class="o">]</span> README
+</span><span class='line'><span class="nv">$ </span>svn status
+</span><span class='line'>--- Changelist <span class="err">&#39;</span>patches/readme-update.diff<span class="sb">`</span>:
+</span><span class='line'>M    README
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Unapply the patch by removing the changelist association and popping the patch:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>quilt files | xargs svn cl --remove
+</span><span class='line'>D <span class="o">[</span>patches/readme-update.diff<span class="o">]</span> README
+</span><span class='line'><span class="nv">$ </span>svn status
+</span><span class='line'>M    README
+</span><span class='line'><span class="nv">$ </span>quilt pop
+</span><span class='line'><span class="nv">$ </span>svn status
+</span><span class='line'><span class="nv">$ </span>quilt
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To streamline:</p>
+
+<p>With no temporary file, and keep changes in working directory.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>svn diff --cl readme-update | quilt import -f -p0 /dev/stdin; quilt rename readme-update
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Revert files covered by the patch.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>svn revert -R . --cl readme-update
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One line push into changelist.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>quilt push <span class="o">&amp;&amp;</span> quilt files | xargs svn cl <span class="sb">`</span>quilt top<span class="sb">`</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One line pop and remove changelist.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>quilt files | xargs svn cl --remove <span class="o">&amp;&amp;</span>  quilt pop
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A studious reader would make shell functions for these.</p>
+</div>
+  
+  
+
+
+    </article>
+  
   <div class="pagination">
     
     <a href="/blog/archives">Blog Archives</a>
@@ -76,6 +251,10 @@
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/07/01/using-quilt-to-stash-a-changelist-in-svn/">Using Quilt to stash a changelist in SVN</a>
+      </li>
     
   </ul>
 </section>
